@@ -1,0 +1,311 @@
+---
+title: "Titanic Tragedy Dataset EDA and Training"
+output: html_notebook
+      ---
+# LOADING DATASET
+```{r}
+titanic <- read.csv("/home/tanmay/Datasets/train.csv")
+```
+
+# EXPLORATORY DATA ANALYSIS
+
+```{r}
+#DATASET PREVIEW
+head(titanic)
+```
+## DATASET STRUCTURE
+```{r}
+str(titanic)
+```
+## DATASET SUMMARY
+```{r}
+summary(titanic)
+```
+## CHECKING MISSING VALUES
+```{r}
+checkNA <- function(x){sum(is.na(x))/length(x)*100} 
+sapply(titanic,checkNA)
+print("MISSING VALUES WITHOUT NA")
+checkMissing <- function(x){sum(x=="")/length(x)*100}
+sapply(titanic,checkMissing)
+```
+## Missing Value Treatment
+```{r}
+#1. Age: Replacing NA values in Age with mean 
+#titanic[is.na(titanic$Age),6] <- mean(titanic$Age)
+titanic$Age[is.na(titanic$Age)] <- round(mean(titanic$Age, na.rm = TRUE))
+
+#2. Embarked: Replacing Empty Embarked with most common value 'S'
+titanic$Embarked <- replace(titanic$Embarked, which(titanic$Embarked==""), 'S')
+```
+
+```{r}
+Title <-  gsub("^.*, (.*?)\\..*$", "\\1", titanic$Name)
+titanic$Title <- as.factor(Title)
+table(Title)
+```
+
+```{r}
+  titanic$FamilyCount <-titanic$SibSp + titanic$Parch + 1 
+titanic$FamilySize[titanic$FamilyCount == 1] <- 'Single' 
+titanic$FamilySize[titanic$FamilyCount < 5 & titanic$FamilyCount >= 2] <- 'Small' 
+titanic$FamilySize[titanic$FamilyCount >= 5] <- 'Big' 
+titanic$FamilySize=as.factor(titanic$FamilySize)
+table(titanic$FamilySize)
+```
+
+## DATA PREPROCESSING
+```{r}
+# 1.Changing names of few categorical variables for interpretability 
+titanic$Survived <- ifelse(titanic$Survived==1,"Yes","No")
+titanic$Survived <- as.factor(titanic$Survived)
+
+titanic$Embarked <- ifelse(titanic$Embarked=="S","Southampton", 
+                              ifelse(titanic$Embarked=="C","Cherbourg", "Queenstown"))
+titanic$Embarked <- as.factor(titanic$Embarked)
+# 
+# # 2.Converting categorical variables from int to factor
+# i) Pclass
+titanic$Pclass <- as.factor(titanic$Pclass)
+# 
+# # ii) SibSp
+titanic$SibSp <- as.factor(titanic$SibSp)
+# 
+# # iii) Parch
+titanic$Parch <- as.factor(titanic$Parch)
+
+#Preview
+head(titanic)
+```
+  
+## Survival Demographic
+
+```{r}
+
+library(ggplot2)
+ggplot(titanic, aes(Survived,fill = Survived))+
+  geom_bar()+
+  ggtitle("Barplot to represent Passenger Count who Survived vs who Died")
+```
+## Average Age of Passengers
+```{r}
+summary(titanic$Age)
+d <- density(titanic$Age)
+plot(d,main="Passenger Age Distribution",xlab="Age",ylab="Frequency",col="blue")
+```
+
+## Proportion of survivors by gender
+```{r}
+ggplot(titanic, aes(x=Sex,fill=Survived))+ geom_bar(position = "dodge") + geom_text(stat='count',aes(label=..count..),position = position_dodge(0.9),vjust=-0.2) +
+ylab("Number of Passengers")
+```
+## Age distribution of Survivors & Non-Survivors
+```{r}
+ggplot(titanic) + geom_freqpoly(mapping = aes(x = Age, color = Survived), binwidth = 2.5) +
+ylab("Frequency")
+```
+
+## Distribution of Passenger Fare for Survivors & Non-Survivors
+```{r}
+ggplot(titanic) + geom_freqpoly(mapping = aes(x = Fare, color = Survived), binwidth = 10)
+```
+
+## Passenger Class of most Non-Survivors
+```{r}
+  ggplot(titanic, aes(x=Pclass,fill=Survived))+ geom_bar(position = "dodge") + geom_text(stat='count',aes(label=..count..),position = position_dodge(0.9),vjust=-0.2) +
+ylab("Number of Passengers") + xlab("Passenger Class")
+```
+
+## Proportion of survivors by place of Embarkment
+```{r}
+ggplot(titanic, aes(x=Embarked,fill=Survived))+ geom_bar(position = "dodge") + geom_text(stat='count',aes(label=..count..),position = position_dodge(0.9),vjust=-0.2) +
+ylab("Number of Passengers")
+```
+## Number of sibling/spouses aboard Titanic & Passenger Class
+
+```{r}
+ggplot(titanic, aes(x=SibSp,fill=Pclass))+ geom_bar(position = "dodge") + geom_text(stat='count',aes(label=..count..),position = position_dodge(0.9),vjust=-0.2) +
+ylab("Number of Passengers") + xlab("Number of Siblings")
+```
+  
+## Number of sibling/spouses aboard Titanic related to Survival
+```{r}
+ggplot(titanic, aes(x=SibSp,fill=Survived))+ geom_bar(position = "dodge") + geom_text(stat='count',aes(label=..count..),position = position_dodge(0.9),vjust=-0.2) +
+ylab("Number of Passengers")+xlab("Number of Siblings/Spouse")
+```
+
+## Number of parents/children aboard Titanic differ with Passenger Class
+```{r}
+ggplot(titanic, aes(x=Parch,fill=Pclass))+ geom_bar(position = "dodge") + geom_text(stat='count',aes(label=..count..),position = position_dodge(0.9),vjust=-0.2) +
+ylab("Number of Passengers") + xlab("Number of Parents/Children")
+```
+
+## Relation between Passenger Name Title & Survival
+```{r}
+ggplot(titanic, aes(x=Title,fill=Survived))+ geom_bar(position = "dodge") + geom_text(stat='count',aes(label=..count..),position = position_dodge(0.9),vjust=-0.2) +
+ylab("Number of Passengers") + xlab("Passenger Name Title") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+## Relation between Family Size & Survival
+```{r}
+ggplot(titanic, aes(x=FamilySize,fill=Survived))+ geom_bar(position = "dodge") + geom_text(stat='count',aes(label=..count..),position = position_dodge(0.9),vjust=-0.2) +
+ylab("Number of Passengers") + xlab("Family Size")
+```
+
+# EDA COMPLETE
+## ________________________________________________________________________________________________________________________________________________________________
+
+# USING LOGISTIC REGRESSION FOR TARGET VARIABLE ("SURVIVED")
+
+## CREATING DUMMIES OF CATEGORICAL COLUMNS
+
+```{r}
+library(dummies)
+complete_data <- read.csv("/home/tanmay/Datasets/train.csv")
+
+## Missing values imputation
+complete_data$Embarked[complete_data$Embarked==""] <- "S"
+complete_data$Age[is.na(complete_data$Age)] <- median(complete_data$Age,na.rm=T)
+
+## Removing Cabin as it has very high missing values, passengerId, Ticket and Name are not required
+library(dplyr)
+titanic_data <- complete_data %>% select(-c(Cabin, PassengerId, Ticket, Name))
+
+## Converting "Survived","Pclass","Sex","Embarked" to factors
+for (i in c("Pclass","Sex","Embarked")){
+  titanic_data[,i]=as.factor(titanic_data[,i])
+}
+
+## Create dummy variables for categorical variables
+library(dummies)
+titanic_data <- dummy.data.frame(titanic_data, names=c("Pclass","Sex","Embarked"), sep="_")
+```
+
+```{r}
+head(titanic_data)
+```
+
+## SPLITTING DATA INTO TRAINING AND TESTING
+
+```{r}
+  training_data = titanic_data[1:790,]
+  surv.x = training_data[,-1]
+  surv.y = training_data[,1]
+  testing_data = titanic_data[791:891,]
+  test.x = testing_data[,-1]
+  test.y = testing_data[,1]
+```
+
+## Building Helper Functions
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+#sigmoid function, inverse of logit
+sigmoid <- function(z){1/(1+exp(-z))}
+
+#cost function
+cost <- function(theta, X, y){
+  m <- length(y) # number of training examples
+  h <- sigmoid(X %*% theta)
+  J <- (t(-y)%*%log(h)-t(1-y)%*%log(1-h))/m
+  J
+}
+
+#gradient function
+grad <- function(theta, X, y){
+  m <- length(y) 
+  
+  h <- sigmoid(X%*%theta)
+  grad <- (t(X)%*%(h - y))/m
+  grad
+}
+```
+
+
+```{r}
+# probability of getting 1
+logisticProb <- function(theta, X){
+  X <- na.omit(X)
+  #add bias term and convert to matrix
+  X <- mutate(X, bias =1)
+  X <- as.matrix(X[,c(ncol(X), 1:(ncol(X)-1))])
+  return(sigmoid(X%*%theta))
+}
+
+# y prediction
+logisticPred <- function(prob){
+  return(round(prob, 0))
+}
+```
+
+## Logistic Regression Code
+
+```{r}
+logisticReg <- function(X, y){
+  #remove NA rows
+  X <- na.omit(X)
+  y <- na.omit(y)
+  #add bias term and convert to matrix
+  X <- mutate(X, bias =1)
+  #move the bias column to col1
+  X <- as.matrix(X[, c(ncol(X), 1:(ncol(X)-1))])
+  print(dim(X))
+  # X <- as.matrix(X)
+  y <- as.matrix(y)
+  #initialize theta
+  theta <- matrix(rep(0, ncol(X)), nrow = ncol(X))
+  print(theta)
+  #use the optim function to perform gradient descent
+  costOpti <- optim(theta, fn = cost, gr = grad, X = X, y = y)
+  #return coefficients
+  return(costOpti$par)
+}
+```
+## Feed Data to Logistic Reg Function
+
+```{r}
+mod <- logisticReg(surv.x, surv.y)
+mod
+```
+```{r}
+pre <- data.frame(matrix(c(1,0,0,0,1,24,0,0,60,1,0,0),nrow=1))
+zpr <- logisticProb(mod,pre)
+zpr
+ans <- logisticPred(zpr)
+ans
+```
+
+```{r}
+  grid <- test.x
+  prob <- logisticProb(mod,grid)
+  print(length(prob))
+  Z <- logisticPred(prob)
+  print(length(Z))
+  gridPred = cbind(grid, Z)
+```
+```{r}
+results.table <- table(Z, test.y,dnn = c('Predicted','Actual'))
+print(results.table)
+```
+
+
+```{r}
+precision <- results.table[2,2] / (results.table[2,2] + results.table[2,1])
+recal <- results.table[2,2] / (results.table[2,2] + results.table[1,2])
+F1 <- 2 * precision * recal / (precision + recal)   
+print(paste('F1-score: ', F1))
+
+#My Accuracy Function
+accu <- function(tp,tn,tot){
+  return((tp+tn)/tot)
+}
+acc <- accu(tp = results.table[1,1],tn = results.table[2,2],length(test.y))
+print(paste('Accuracy: ', acc))
+```
+```{r}
+fourfoldplot(results.table, color = c("#CC6666", "#99CC99"),
+             conf.level = 0, margin = 1, main = "Confusion Matrix")
+```
+
